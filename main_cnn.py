@@ -17,7 +17,7 @@ batch_size = 64
 learning_rate = 0.001
 epochs = 10
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 print(f"Using device: {device}")
 
 
@@ -54,8 +54,8 @@ def main():
     test(model, device, test_loader, criterion, data_path)
 
     # Save the model checkpoint
-    torch.save(model.state_dict(), f'{data_path}output/simple_cnn.pth')
-    print('Finished Training. Model saved as simple_cnn.pth.')
+    torch.save(model.state_dict(), f'{data_path}output/model.pth')
+    print('Finished Training. Model saved as model.pth.')
 
 
 if __name__ == '__main__':
