@@ -35,8 +35,6 @@ def train_model(model, train_loader, queue, epoch):
 
     print('training')
     gradients = train_distributed(model, device, train_loader, optimizer, criterion, epoch)
-    # print('validating')
-    # val(model, device, val_loader, criterion, epoch, data_path)
     queue.put(gradients)
     
 
@@ -89,7 +87,7 @@ def main():
     test_dataset = CIFAR10Dataset(os.path.join(data_path, 'test'), transform=transform)
 
     # data loaders
-    _, _, test_loader = get_data_loaders(train_dataset, test_dataset, batch_size)
+    _, val_loader, test_loader = get_data_loaders(train_dataset, test_dataset, batch_size)
 
     # num_partitions & base model
     num_partitions = 5
@@ -117,14 +115,20 @@ def main():
         # model copys
         models = [copy.deepcopy(base_model) for _ in range(num_partitions)]
 
+        print(f"validation {epoch}")
+        criterion = nn.CrossEntropyLoss()
+        p = Process(target=val, args=(base_model, device, val_loader, criterion, epoch, data_path))
+        p.start()
+        processes.append(p)
+
         # starting processes
+        print(f"training {epoch}")
         for i in range(num_partitions):
             queue = Queue()
             queues.append(queue)
             p = Process(target=train_model, args=(models[i], train_loaders[i], queue, epoch))
             p.start()
             processes.append(p)
-
 
         # join processes
         for p in processes:
@@ -150,28 +154,9 @@ def main():
     criterion = nn.CrossEntropyLoss()
     test(base_model, device, test_loader, criterion, data_path)
 
-    exit(0)
-        
-    # Average out the gradients
-    
-
-
-
-    
-
-    # # Train the model
-    # for epoch in range(epochs):
-    #     print('training')
-    #     train(model, device, train_loader, optimizer, criterion, epoch)
-    #     print('validating')
-    #     val(model, device, val_loader, criterion, epoch, data_path)
-
-    # # Test the model
-    # test(model, device, test_loader, criterion, data_path)
-
-    # # Save the model checkpoint
-    # torch.save(model.state_dict(), f'{data_path}output/model.pth')
-    # print('Finished Training. Model saved as model.pth.')
+    # Save the model checkpoint
+    torch.save(base_model.state_dict(), f'{data_path}output/model.pth')
+    print('Finished Training. Model saved as model.pth.')
 
 
 if __name__ == '__main__':
