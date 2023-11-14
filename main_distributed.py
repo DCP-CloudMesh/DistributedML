@@ -40,6 +40,40 @@ def train_model(model, train_loader, queue, epoch):
     queue.put(gradients)
     
 
+def get_model_parameters(model):
+    """ Extract parameters from a single model. """
+    parameters = {name: param.clone().detach() for name, param in model.named_parameters()}
+    return parameters
+
+
+def average_model_parameters(model_parameters_list):
+    """ Average the parameters of models in a list. """
+    avg_parameters = {}
+    for key in model_parameters_list[0].keys():
+        # Stack the same parameter from each model and then take the mean
+        avg_parameters[key] = torch.stack([params[key] for params in model_parameters_list]).mean(dim=0)
+    return avg_parameters
+
+
+def average_model_gradients(gradient_list):
+    """ Average the gradients of models in a list. """
+    avg_gradients = {}
+    for key in gradient_list[0].keys():
+        # Stack the same gradient from each model and then take the mean
+        avg_gradients[key] = torch.stack([grads[key] for grads in gradient_list]).mean(dim=0)
+    return avg_gradients
+
+
+def apply_averaged_parameters_and_gradients(model, avg_parameters, avg_gradients):
+    """ Apply averaged parameters and gradients to a model. """
+    with torch.no_grad():
+        for name, param in model.named_parameters():
+            if name in avg_parameters:
+                param.copy_(avg_parameters[name])
+            if param.grad is not None and name in avg_gradients:
+                param.grad.copy_(avg_gradients[name])
+
+
 def main():
     # Define transforms
     transform = transforms.Compose([
@@ -91,27 +125,26 @@ def main():
             p.start()
             processes.append(p)
 
-        # getting result from queues
-        gradients = []
-        for q in queues:
-            gradients.append(q.get())
 
         # join processes
         for p in processes:
             p.join()
 
-        print(gradients)
+        # getting result from queues
+        gradients = []
+        for q in queues:
+            gradients.append(q.get())
 
-        # averaging the gradients
-        avg_gradients = {k: torch.stack([grad[k] for grad in gradients]).mean(dim=0) 
-                    for k in gradients[0]}
+        # print(gradients)
+        avg_gradients = average_model_gradients(gradients)
 
-        for name, parameter in base_model.named_parameters():
-            if name in avg_gradients:
-                parameter.grad = avg_gradients[name]
+        all_model_parameters = [get_model_parameters(model) for model in models]
+        avg_parameters = average_model_parameters(all_model_parameters)
 
-        optimizer = optim.Adam(base_model.parameters(), lr=learning_rate)
-        optimizer.step()
+        apply_averaged_parameters_and_gradients(base_model, avg_parameters, avg_gradients)
+
+        # optimizer = optim.Adam(base_model.parameters(), lr=learning_rate)
+        # optimizer.step()
 
     # Test the model
     criterion = nn.CrossEntropyLoss()

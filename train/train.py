@@ -37,11 +37,12 @@ def train_distributed(model, device, train_loader, optimizer, criterion, epoch):
         optimizer.step()
 
         running_loss += loss.item()
-        for name, parameter in model.named_parameters():
-            if parameter.grad is not None:
-                gradients[name] = parameter.grad.clone().to('cpu')
 
         progress_bar.set_postfix(loss=running_loss/(batch_idx+1), current_batch=batch_idx, refresh=True)
+
+    for name, parameter in model.named_parameters():
+        if parameter.grad is not None:
+            gradients[name] = parameter.grad.clone().to('cpu')
 
     print('[Epoch %d] loss: %.3f' % (epoch + 1, running_loss / len(train_loader)))
 
