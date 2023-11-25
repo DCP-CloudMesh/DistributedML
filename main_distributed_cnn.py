@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Subset
+import multiprocessing
 from multiprocessing import Process, Pool, Queue
 import math
 import copy
@@ -26,9 +27,11 @@ epochs = 10
 # device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 device = 'cpu'
 print(f"Using device: {device}")
+# print("Number of CPUs being used", multiprocessing.cpu_count())
 
 # each process will have their own
 def train_model(model, train_loader, queue, epoch):
+    print("Number of CPUs being used", multiprocessing.cpu_count())
     # Model & loss & optimizer
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
