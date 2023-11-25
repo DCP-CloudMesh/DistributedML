@@ -28,24 +28,3 @@ class Resnet50(nn.Module):
 
     def forward(self, x):
         return self.resnet50(x)
-
-
-# def Resnet50(num_classes=10):
-#     resnet50 = models.resnet50(pretrained=True)
-#     resnet50.fc = nn.Linear(resnet50.fc.in_features, num_classes)
-
-#     # freezing all layers on backbone
-#     for param in resnet50.parameters():
-#         param.requires_grad = False
-
-#     # only training fully connected layer and last conv layer
-#     for param in resnet50.layer4.parameters():
-#         param.requires_grad = True
-
-#     for param in resnet50.fc.parameters():
-#         param.requires_grad = True
-
-#     for name, param in resnet50.named_parameters():
-#         print(name, param.requires_grad)
-
-#     return resnet50
