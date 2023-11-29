@@ -36,7 +36,7 @@ for root_directory in root_directories:
 fig, ax = plt.subplots(figsize=(10, 6))  # Adjust the figure size as needed
 
 for i, metric_values in enumerate(metric_values):
-    ax.plot(range(num_epochs), metric_values, label=f'Model {i+1}', marker='o', linestyle='-')
+    ax.plot(range(num_epochs), metric_values, label=model_names[i], marker='o', linestyle='-')
 
 ax.set_title(f"{metric_to_track} over multiple epochs")
 ax.set_xlabel('epoch')
