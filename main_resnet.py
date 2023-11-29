@@ -16,7 +16,7 @@ from test.test import test
 # Hyperparameters (can use CLI)
 batch_size = 64
 learning_rate = 0.001
-epochs = 1
+epochs = 10
 
 device = 'cpu' # torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 print(f"Using device: {device}")
