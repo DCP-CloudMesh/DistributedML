@@ -8,8 +8,11 @@ import multiprocessing
 from multiprocessing import Process, Pool, Queue
 import math
 import copy
+import time
 
 from networks.simpleCNN import SimpleCNN
+from networks.resnet50 import Resnet50
+from networks.resnet18 import Resnet18
 from dataloader.cifar10_dataset import CIFAR10Dataset
 from dataloader.dataloader import get_data_loaders
 from train.train import train_distributed
@@ -23,6 +26,7 @@ from test.test import test
 batch_size = 64
 learning_rate = 0.001
 epochs = 10
+model_name = 'Resnet18'
 
 # device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 device = 'cpu'
@@ -31,7 +35,7 @@ print(f"Using device: {device}")
 
 # each process will have their own
 def train_model(model, train_loader, queue, epoch):
-    print("Number of CPUs being used", multiprocessing.cpu_count())
+    # print("Number of CPUs being used", multiprocessing.cpu_count())
     # Model & loss & optimizer
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -76,6 +80,8 @@ def apply_averaged_parameters_and_gradients(model, avg_parameters, avg_gradients
 
 
 def main():
+    start_time = time.time()
+
     # Define transforms
     transform = transforms.Compose([
         transforms.Resize((32, 32)),
@@ -94,7 +100,16 @@ def main():
 
     # num_partitions & base model
     num_partitions = 5
-    base_model = SimpleCNN().to(device)
+    base_model = None
+    if model_name == 'SimpleCNN':
+        base_model = SimpleCNN().to(device)
+    elif model_name == "Resnet50":
+        base_model = Resnet50().to(device)
+    elif model_name == "Resnet18":
+        base_model = Resnet18().to(device)
+    else:
+        print("Model not supported")
+        exit()
 
     # data partitions
     partition_size = math.ceil(len(train_dataset) / num_partitions)
@@ -160,6 +175,11 @@ def main():
     # Save the model checkpoint
     torch.save(base_model.state_dict(), f'{data_path}output/model.pth')
     print('Finished Training. Model saved as model.pth.')
+
+    end_time = time.time()
+    print("Total Time: ", end_time-start_time)
+    print("Start Time: ", start_time)
+    print("End Time: ", end_time)
 
 
 if __name__ == '__main__':

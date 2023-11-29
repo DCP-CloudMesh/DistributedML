@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, transforms
+import time
 
 from networks.simpleCNN import SimpleCNN
 from dataloader.cifar10_dataset import CIFAR10Dataset
@@ -17,11 +18,14 @@ batch_size = 64
 learning_rate = 0.001
 epochs = 10
 
-device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+# device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+device = 'cpu'
 print(f"Using device: {device}")
 
 
 def main():
+    start_time = time.time()
+
     # Define transforms
     transform = transforms.Compose([
         transforms.Resize((32, 32)),
@@ -56,6 +60,11 @@ def main():
     # Save the model checkpoint
     torch.save(model.state_dict(), f'{data_path}output/model.pth')
     print('Finished Training. Model saved as model.pth.')
+
+    end_time = time.time()
+    print("Total Time: ", end_time-start_time)
+    print("Start Time: ", start_time)
+    print("End Time: ", end_time)
 
 
 if __name__ == '__main__':

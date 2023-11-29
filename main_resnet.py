@@ -5,7 +5,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 import time
 
-from networks.resnet50 import Resnet50
+from networks.resnet18 import Resnet18
 from dataloader.cifar10_dataset import CIFAR10Dataset
 from dataloader.dataloader import get_data_loaders
 from train.train import train
@@ -42,7 +42,7 @@ def main():
     train_loader, val_loader, test_loader = get_data_loaders(train_dataset, test_dataset, batch_size)
 
     # Model & loss & optimizer
-    model = Resnet50().to(device)
+    model = Resnet18().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
