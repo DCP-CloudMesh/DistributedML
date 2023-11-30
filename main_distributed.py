@@ -10,6 +10,7 @@ import math
 import copy
 import time
 
+from networks.efficientNetB0 import EfficientNetB0
 from networks.simpleCNN import SimpleCNN
 from networks.resnet50 import Resnet50
 from networks.resnet18 import Resnet18
@@ -26,7 +27,7 @@ from test.test import test
 batch_size = 64
 learning_rate = 0.001
 epochs = 10
-model_name = 'Resnet18'
+model_name = 'enet0'
 
 # device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 device = 'cpu'
@@ -107,6 +108,8 @@ def main():
         base_model = Resnet50().to(device)
     elif model_name == "Resnet18":
         base_model = Resnet18().to(device)
+    elif model_name == "enet0":
+        base_model = EfficientNetB0().to(device)
     else:
         print("Model not supported")
         exit()

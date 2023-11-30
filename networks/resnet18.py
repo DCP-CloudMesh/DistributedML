@@ -8,15 +8,15 @@ class Resnet18(nn.Module):
         self.resnet18 = models.resnet18(pretrained=True)
         self.resnet18.fc = nn.Linear(self.resnet18.fc.in_features, num_classes)
 
-        # freezing all layers on backbone
-        for param in self.resnet18.parameters():
-            param.requires_grad = False
+        # # freezing all layers on backbone
+        # for param in self.resnet18.parameters():
+        #     param.requires_grad = False
 
-        # only training fully connected layer and last conv layer
-        for param in self.resnet18.layer4.parameters():
-            param.requires_grad = True
-        for param in self.resnet18.fc.parameters():
-            param.requires_grad = True
+        # # only training fully connected layer and last conv layer
+        # for param in self.resnet18.layer4.parameters():
+        #     param.requires_grad = True
+        # for param in self.resnet18.fc.parameters():
+        #     param.requires_grad = True
 
         # printing parameters
         for name, param in self.resnet18.named_parameters():
