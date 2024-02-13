@@ -1,7 +1,6 @@
 import os
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Subset
 import multiprocessing
@@ -9,6 +8,7 @@ from multiprocessing import Process, Pool, Queue
 import math
 import copy
 import time
+import yaml
 
 from networks.efficientNetB0 import EfficientNetB0
 from networks.simpleCNN import SimpleCNN
@@ -16,72 +16,30 @@ from networks.resnet50 import Resnet50
 from networks.resnet18 import Resnet18
 from dataloader.cifar10_dataset import CIFAR10Dataset
 from dataloader.dataloader import get_data_loaders
-from train.train import train_distributed
 from train.val import val
 from test.test import test
 
-# Pytorch DDP
-# https://pytorch.org/tutorials/intermediate/ddp_tutorial.html
-
-# Hyperparameters (can use CLI)
-batch_size = 64
-learning_rate = 0.001
-epochs = 10
-model_name = 'enet0'
-
-# device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-device = 'cpu'
-print(f"Using device: {device}")
-# print("Number of CPUs being used", multiprocessing.cpu_count())
-
-# each process will have their own
-def train_model(model, train_loader, queue, epoch):
-    # print("Number of CPUs being used", multiprocessing.cpu_count())
-    # Model & loss & optimizer
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-
-    print('training')
-    gradients = train_distributed(model, device, train_loader, optimizer, criterion, epoch)
-    queue.put(gradients)
-    
-
-def get_model_parameters(model):
-    """ Extract parameters from a single model. """
-    parameters = {name: param.clone().detach() for name, param in model.named_parameters()}
-    return parameters
-
-
-def average_model_parameters(model_parameters_list):
-    """ Average the parameters of models in a list. """
-    avg_parameters = {}
-    for key in model_parameters_list[0].keys():
-        # Stack the same parameter from each model and then take the mean
-        avg_parameters[key] = torch.stack([params[key] for params in model_parameters_list]).mean(dim=0)
-    return avg_parameters
-
-
-def average_model_gradients(gradient_list):
-    """ Average the gradients of models in a list. """
-    avg_gradients = {}
-    for key in gradient_list[0].keys():
-        # Stack the same gradient from each model and then take the mean
-        avg_gradients[key] = torch.stack([grads[key] for grads in gradient_list]).mean(dim=0)
-    return avg_gradients
-
-
-def apply_averaged_parameters_and_gradients(model, avg_parameters, avg_gradients):
-    """ Apply averaged parameters and gradients to a model. """
-    with torch.no_grad():
-        for name, param in model.named_parameters():
-            if name in avg_parameters:
-                param.copy_(avg_parameters[name])
-            if param.grad is not None and name in avg_gradients:
-                param.grad.copy_(avg_gradients[name])
-
+from utils import train_model, get_model_parameters, average_model_parameters, average_model_gradients, apply_averaged_parameters_and_gradients
 
 def main():
     start_time = time.time()
+
+    # Read from config file
+    with open("config.yml", "r") as stream:
+        try:
+            configs = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
+
+    batch_size = configs.get('batch_size')
+    learning_rate = configs.get('learning_rate')
+    num_epochs = configs.get('num_epochs')
+    num_partitions = configs.get('num_partitions')
+    model_name = configs.get('model_name')
+    device_name = configs.get('device_name')
+    data_path = configs.get('data_path')
+
+    print(f"Using device: {device_name}")
 
     # Define transforms
     transform = transforms.Compose([
@@ -90,7 +48,6 @@ def main():
     ])
 
     # Create the datasets
-    data_path = 'CIFAR10/'
     if not os.path.exists(os.path.join(data_path, 'output')):
         os.mkdir(os.path.join(data_path, 'output'))
     train_dataset = CIFAR10Dataset(os.path.join(data_path, 'train'), transform=transform)
@@ -100,16 +57,14 @@ def main():
     _, val_loader, test_loader = get_data_loaders(train_dataset, test_dataset, batch_size)
 
     # num_partitions & base model
-    num_partitions = 5
-    base_model = None
     if model_name == 'SimpleCNN':
-        base_model = SimpleCNN().to(device)
+        base_model = SimpleCNN().to(device_name)
     elif model_name == "Resnet50":
-        base_model = Resnet50().to(device)
+        base_model = Resnet50().to(device_name)
     elif model_name == "Resnet18":
-        base_model = Resnet18().to(device)
+        base_model = Resnet18().to(device_name)
     elif model_name == "enet0":
-        base_model = EfficientNetB0().to(device)
+        base_model = EfficientNetB0().to(device_name)
     else:
         print("Model not supported")
         exit()
@@ -127,9 +82,8 @@ def main():
 
     # Create a DataLoader for each partition
     train_loaders = [DataLoader(partition, batch_size=batch_size, shuffle=True) for partition in partitions]
-    print(train_loaders)
 
-    for epoch in range(epochs):
+    for epoch in range(num_epochs):
         processes = []
         queues = []
 
@@ -138,7 +92,7 @@ def main():
 
         print(f"validation {epoch}")
         criterion = nn.CrossEntropyLoss()
-        p = Process(target=val, args=(base_model, device, val_loader, criterion, epoch, data_path))
+        p = Process(target=val, args=(base_model, device_name, val_loader, criterion, epoch, data_path))
         p.start()
         processes.append(p)
 
@@ -147,7 +101,7 @@ def main():
         for i in range(num_partitions):
             queue = Queue()
             queues.append(queue)
-            p = Process(target=train_model, args=(models[i], train_loaders[i], queue, epoch))
+            p = Process(target=train_model, args=(models[i], train_loaders[i], queue, epoch, learning_rate, device_name))
             p.start()
             processes.append(p)
 
@@ -173,7 +127,7 @@ def main():
 
     # Test the model
     criterion = nn.CrossEntropyLoss()
-    test(base_model, device, test_loader, criterion, data_path)
+    test(base_model, device_name, test_loader, criterion, data_path)
 
     # Save the model checkpoint
     torch.save(base_model.state_dict(), f'{data_path}output/model.pth')
