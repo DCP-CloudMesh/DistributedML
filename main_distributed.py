@@ -10,6 +10,7 @@ import copy
 import time
 import yaml
 
+import torch.optim as optim
 from networks.efficientNetB0 import EfficientNetB0
 from networks.simpleCNN import SimpleCNN
 from networks.resnet50 import Resnet50
@@ -18,6 +19,7 @@ from dataloader.cifar10_dataset import CIFAR10Dataset
 from dataloader.dataloader import get_data_loaders
 from train.val import val
 from test.test import test
+from train.train import train
 
 from utils import train_model, get_model_parameters, average_model_parameters, average_model_gradients, apply_averaged_parameters_and_gradients
 
@@ -58,13 +60,13 @@ def main():
 
     # num_partitions & base model
     if model_name == 'SimpleCNN':
-        base_model = SimpleCNN().to(device_name)
+        model = SimpleCNN().to(device_name)
     elif model_name == "Resnet50":
-        base_model = Resnet50().to(device_name)
+        model = Resnet50().to(device_name)
     elif model_name == "Resnet18":
-        base_model = Resnet18().to(device_name)
+        model = Resnet18().to(device_name)
     elif model_name == "enet0":
-        base_model = EfficientNetB0().to(device_name)
+        model = EfficientNetB0().to(device_name)
     else:
         print("Model not supported")
         exit()
@@ -83,55 +85,55 @@ def main():
     # Create a DataLoader for each partition
     train_loaders = [DataLoader(partition, batch_size=batch_size, shuffle=True) for partition in partitions]
 
+    # Model & loss & optimizer
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     for epoch in range(num_epochs):
-        processes = []
-        queues = []
+        print('training')
+        train(model, device_name, train_loaders[0], optimizer, criterion, epoch)
+        print('validating')
+        val(model, device_name, val_loader, criterion, epoch, data_path)
 
-        # model copys
-        models = [copy.deepcopy(base_model) for _ in range(num_partitions)]
+        torch.save(model.state_dict(), f'{data_path}output/model_{epoch}.pth')
+        model = SimpleCNN().to(device_name)
+        model.load_state_dict(torch.load(f'{data_path}output/model_{epoch}.pth'))
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-        print(f"validation {epoch}")
-        criterion = nn.CrossEntropyLoss()
-        p = Process(target=val, args=(base_model, device_name, val_loader, criterion, epoch, data_path))
-        p.start()
-        processes.append(p)
 
-        # starting processes
-        print(f"training {epoch}")
-        for i in range(num_partitions):
-            queue = Queue()
-            queues.append(queue)
-            p = Process(target=train_model, args=(models[i], train_loaders[i], queue, epoch, learning_rate, device_name))
-            p.start()
-            processes.append(p)
+    # for epoch in range(num_epochs):
+    #     processes = []
+    #     queues = []
 
-        # join processes
-        for p in processes:
-            p.join()
+    #     # model copys
+    #     # models = [copy.deepcopy(base_model) for _ in range(num_partitions)]
 
-        # getting result from queues
-        gradients = []
-        for q in queues:
-            gradients.append(q.get())
 
-        # print(gradients)
-        avg_gradients = average_model_gradients(gradients)
+    #     print(f"validation {epoch}")
+    #     criterion = nn.CrossEntropyLoss()
+    #     val(base_model, device_name, val_loader, criterion, epoch, data_path)
 
-        all_model_parameters = [get_model_parameters(model) for model in models]
-        avg_parameters = average_model_parameters(all_model_parameters)
+    #     # starting processes
+    #     print(f"training {epoch}")
+    #     train_model(base_model, train_loaders[i], epoch, learning_rate, device_name)
 
-        apply_averaged_parameters_and_gradients(base_model, avg_parameters, avg_gradients)
+        # # print(gradients)
+        # avg_gradients = average_model_gradients(gradients)
+
+        # all_model_parameters = [get_model_parameters(model) for model in models]
+        # avg_parameters = average_model_parameters(all_model_parameters)
+
+        # apply_averaged_parameters_and_gradients(base_model, avg_parameters, avg_gradients)
 
         # optimizer = optim.Adam(base_model.parameters(), lr=learning_rate)
         # optimizer.step()
 
     # Test the model
     criterion = nn.CrossEntropyLoss()
-    test(base_model, device_name, test_loader, criterion, data_path)
+    test(model, device_name, test_loader, criterion, data_path)
 
     # Save the model checkpoint
-    torch.save(base_model.state_dict(), f'{data_path}output/model.pth')
-    print('Finished Training. Model saved as model.pth.')
+    torch.save(model.state_dict(), f'{data_path}output/model_final.pth')
+    print('Finished Training. Model saved as model_final.pth.')
 
     end_time = time.time()
     print("Total Time: ", end_time-start_time)
