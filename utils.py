@@ -2,6 +2,35 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from train.train import train_distributed
+import portalocker
+
+def LOG(text, file_path):
+    with open(file_path, "a+") as file:
+        try:
+            # Acquire an exclusive lock
+            portalocker.lock(file, portalocker.LOCK_EX)
+
+            # Write data to the file
+            file.write(text+'\n')
+
+        finally:
+            # Release the lock
+            portalocker.unlock(file)
+
+def LOG_AND_PRINT(text, file_path):
+    print(text)
+    with open(file_path, "a+") as file:
+        try:
+            # Acquire an exclusive lock
+            portalocker.lock(file, portalocker.LOCK_EX)
+
+            # Write data to the file
+            file.write(text+'\n')
+
+        finally:
+            # Release the lock
+            portalocker.unlock(file)
+
 
 # each process will have their own
 def train_model(model, train_loader, queue, epoch, learning_rate, device):
@@ -28,6 +57,14 @@ def average_model_parameters(model_parameters_list):
         # Stack the same parameter from each model and then take the mean
         avg_parameters[key] = torch.stack([params[key] for params in model_parameters_list]).mean(dim=0)
     return avg_parameters
+
+
+def apply_model_parameters(model, model_parameters):
+    """ Apply model parameters to a given model. """
+    with torch.no_grad():
+        for name, param in model.named_parameters():
+            if name in model_parameters:
+                param.copy_(model_parameters[name])
 
 
 def average_model_gradients(gradient_list):

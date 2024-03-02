@@ -21,7 +21,9 @@ from train.val import val
 from test.test import test
 from train.train import train
 
-from utils import train_model, get_model_parameters, average_model_parameters, average_model_gradients, apply_averaged_parameters_and_gradients
+from utils import LOG, LOG_AND_PRINT, train_model, get_model_parameters, average_model_parameters, apply_model_parameters, average_model_gradients, apply_averaged_parameters_and_gradients
+
+
 
 def main():
     start_time = time.time()
@@ -40,8 +42,17 @@ def main():
     model_name = configs.get('model_name')
     device_name = configs.get('device_name')
     data_path = configs.get('data_path')
+    logging_path = configs.get('logging_path')
 
     print(f"Using device: {device_name}")
+
+    # Get user input
+    while True:
+        id = int(input("Enter process id: "))
+        if id < 0 or id > num_partitions-1:
+            print(f"Enter an id between 0 and {num_partitions-1}")
+        else:
+            break
 
     # Define transforms
     transform = transforms.Compose([
@@ -84,20 +95,61 @@ def main():
 
     # Create a DataLoader for each partition
     train_loaders = [DataLoader(partition, batch_size=batch_size, shuffle=True) for partition in partitions]
+    train_loader = train_loaders[id-1]
+
+    # Print separator before starting
+    if id == 0: 
+        LOG_AND_PRINT(text=f"========================================", file_path=logging_path)
 
     # Model & loss & optimizer
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     for epoch in range(num_epochs):
-        print('training')
-        train(model, device_name, train_loaders[0], optimizer, criterion, epoch)
-        print('validating')
+        LOG_AND_PRINT(f'epoch {epoch} started for process {id}', file_path=logging_path)
+        LOG_AND_PRINT(f'training started for process {id}', file_path=logging_path)
+        train(model, device_name, train_loader, optimizer, criterion, epoch)
+
+        LOG_AND_PRINT(f'validating started for process {id}', file_path=logging_path)
         val(model, device_name, val_loader, criterion, epoch, data_path)
 
-        torch.save(model.state_dict(), f'{data_path}output/model_{epoch}.pth')
-        model = SimpleCNN().to(device_name)
-        model.load_state_dict(torch.load(f'{data_path}output/model_{epoch}.pth'))
-        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+        LOG_AND_PRINT(text=f"Saving model_{id}_{epoch}.pth", file_path=logging_path)
+        torch.save(model.state_dict(), f'{data_path}output/model_{id}_{epoch}.pth')
+
+        # The leader and must combine the model
+        if id == 0:
+            follower_models = [] 
+            for i in range(0, num_partitions):
+                LOG_AND_PRINT(text=f"Leader is waiting for model_{i}_{epoch}.pth", file_path=logging_path)
+
+                cur_model_path = f'{data_path}output/model_{i}_{epoch}.pth'
+
+                # Busy wait until file is available
+                while not os.path.exists(cur_model_path):
+                    time.sleep(1)
+                LOG_AND_PRINT(text=f"Leader read model_{i}_{epoch}.pth", file_path=logging_path)
+
+                # Read and save the model
+                temp_model = SimpleCNN().to(device_name)
+                temp_model.load_state_dict(torch.load(cur_model_path))
+                follower_models.append(temp_model)
+
+                # Delete the model after reading it
+                os.remove(cur_model_path)
+
+            # Apply the averaged parameters to the leader model
+            avg_parameters = average_model_parameters(follower_models)
+            # model = SimpleCNN().to(device_name)
+            apply_model_parameters(model, avg_parameters)
+            # optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+            
+
+            LOG_AND_PRINT(text=f"========================================", file_path=logging_path)
+        # The followers must wait for the combined model from the leader before proceeding
+        else: 
+            continue
+
+
 
 
     # for epoch in range(num_epochs):
@@ -132,7 +184,7 @@ def main():
     test(model, device_name, test_loader, criterion, data_path)
 
     # Save the model checkpoint
-    torch.save(model.state_dict(), f'{data_path}output/model_final.pth')
+    torch.save(model.state_dict(), f'{data_path}/output/model_final.pth')
     print('Finished Training. Model saved as model_final.pth.')
 
     end_time = time.time()

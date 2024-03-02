@@ -1,9 +1,10 @@
 batch_size: 64
 learning_rate: 0.001
 num_epochs: 10
-num_partitions: 1
+num_partitions: 3
 
 model_name: SimpleCNN
 device_name: cpu
 
 data_path: CIFAR10/
+logging_path: logs.txt
