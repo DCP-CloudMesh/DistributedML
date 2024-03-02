@@ -137,20 +137,33 @@ def main():
                 os.remove(cur_model_path)
 
             # Apply the averaged parameters to the leader model
-            avg_parameters = average_model_parameters(follower_models)
+            all_model_parameters = [get_model_parameters(model) for model in follower_models]
+            avg_parameters = average_model_parameters(all_model_parameters)
             # model = SimpleCNN().to(device_name)
             apply_model_parameters(model, avg_parameters)
             # optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-            
+            # Save the model checkpoint
+            LOG_AND_PRINT(text=f"Saving model_combined_{epoch}.pth", file_path=logging_path)
+            torch.save(model.state_dict(), f'{data_path}output/model_combined_{epoch}.pth')
 
             LOG_AND_PRINT(text=f"========================================", file_path=logging_path)
         # The followers must wait for the combined model from the leader before proceeding
         else: 
-            continue
+            LOG_AND_PRINT(text=f"Follower {id} is waiting for model_combined_{epoch}.pth", file_path=logging_path)
 
+            cur_model_path = f"{data_path}output/model_combined_{epoch}.pth"
 
+            # Busy wait until file is available
+            while not os.path.exists(cur_model_path):
+                time.sleep(1)
 
+            LOG_AND_PRINT(text=f"Follower {id} read model_combined_{epoch}.pth", file_path=logging_path)
+
+            # Read and load the model
+            # model = SimpleCNN().to(device_name)
+            model.load_state_dict(torch.load(cur_model_path))
+            # optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     # for epoch in range(num_epochs):
     #     processes = []
@@ -184,8 +197,8 @@ def main():
     test(model, device_name, test_loader, criterion, data_path)
 
     # Save the model checkpoint
-    torch.save(model.state_dict(), f'{data_path}/output/model_final.pth')
-    print('Finished Training. Model saved as model_final.pth.')
+    torch.save(model.state_dict(), f'{data_path}/output/model_{id}_final.pth')
+    print('Finished Training. Model saved as model_{id}_final.pth.')
 
     end_time = time.time()
     print("Total Time: ", end_time-start_time)
