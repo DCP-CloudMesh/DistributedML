@@ -5,7 +5,7 @@ import torch.nn as nn
 class Resnet18(nn.Module):
     def __init__(self, num_classes=10):
         super(Resnet18, self).__init__()
-        self.resnet18 = models.resnet18(pretrained=True)
+        self.resnet18 = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
         self.resnet18.fc = nn.Linear(self.resnet18.fc.in_features, num_classes)
 
         # # freezing all layers on backbone
