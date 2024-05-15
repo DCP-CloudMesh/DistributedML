@@ -1,0 +1,103 @@
+========================================
+epoch 0 started for process 0
+training started for process 0
+epoch 0 started for process 1
+training started for process 1
+epoch 0 started for process 2
+training started for process 2
+validating started for process 0
+validating started for process 2
+validating started for process 1
+Saving model_0_0.pth
+Leader is waiting for model_0_0.pth
+Leader read model_0_0.pth
+Leader is waiting for model_1_0.pth
+Saving model_2_0.pth
+Follower 2 is waiting for model_combined_0.pth
+Follower 2 read model_combined_0.pth
+epoch 1 started for process 2
+training started for process 2
+Saving model_1_0.pth
+Follower 1 is waiting for model_combined_0.pth
+Follower 1 read model_combined_0.pth
+epoch 1 started for process 1
+training started for process 1
+Leader read model_1_0.pth
+Leader is waiting for model_2_0.pth
+Leader read model_2_0.pth
+Saving model_combined_0.pth
+========================================
+epoch 1 started for process 0
+training started for process 0
+validating started for process 2
+validating started for process 1
+validating started for process 0
+Saving model_2_1.pth
+Follower 2 is waiting for model_combined_1.pth
+Follower 2 read model_combined_1.pth
+epoch 2 started for process 2
+training started for process 2
+Saving model_1_1.pth
+Follower 1 is waiting for model_combined_1.pth
+Follower 1 read model_combined_1.pth
+epoch 2 started for process 1
+training started for process 1
+Saving model_0_1.pth
+Leader is waiting for model_0_1.pth
+Leader read model_0_1.pth
+Leader is waiting for model_1_1.pth
+Leader read model_1_1.pth
+Leader is waiting for model_2_1.pth
+Leader read model_2_1.pth
+Saving model_combined_1.pth
+========================================
+epoch 2 started for process 0
+training started for process 0
+validating started for process 2
+validating started for process 1
+validating started for process 0
+Saving model_2_2.pth
+Follower 2 is waiting for model_combined_2.pth
+Follower 2 read model_combined_2.pth
+epoch 3 started for process 2
+training started for process 2
+Saving model_1_2.pth
+Follower 1 is waiting for model_combined_2.pth
+Follower 1 read model_combined_2.pth
+epoch 3 started for process 1
+training started for process 1
+Saving model_0_2.pth
+Leader is waiting for model_0_2.pth
+Leader read model_0_2.pth
+Leader is waiting for model_1_2.pth
+Leader read model_1_2.pth
+Leader is waiting for model_2_2.pth
+Leader read model_2_2.pth
+Saving model_combined_2.pth
+========================================
+epoch 3 started for process 0
+training started for process 0
+validating started for process 2
+validating started for process 1
+validating started for process 0
+Saving model_2_3.pth
+Follower 2 is waiting for model_combined_3.pth
+Follower 2 read model_combined_3.pth
+epoch 4 started for process 2
+training started for process 2
+Saving model_1_3.pth
+Follower 1 is waiting for model_combined_3.pth
+Follower 1 read model_combined_3.pth
+epoch 4 started for process 1
+training started for process 1
+Saving model_0_3.pth
+Leader is waiting for model_0_3.pth
+Leader read model_0_3.pth
+Leader is waiting for model_1_3.pth
+Leader read model_1_3.pth
+Leader is waiting for model_2_3.pth
+Leader read model_2_3.pth
+Saving model_combined_3.pth
+========================================
+epoch 4 started for process 0
+training started for process 0
