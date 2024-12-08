@@ -32,6 +32,9 @@ def val(model, device, val_loader, criterion, epoch, output_path, num_classes=10
             for t, p in zip(target.view(-1), pred.view(-1)):
                 conf_mat[t.long(), p.long()] += 1
 
+    print(output)
+    print(target)
+
     # Metrics calculation
     val_loss /= len(val_loader.dataset)
     accuracy = correct / len(val_loader.dataset)
