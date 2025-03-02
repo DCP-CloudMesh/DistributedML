@@ -7,3 +7,4 @@ model_name: Resnet18
 device_name: cpu
 
 data_path: CIFAR10/
+logging_path: logs.txt
